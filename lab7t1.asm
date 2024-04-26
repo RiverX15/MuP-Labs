@@ -32,5 +32,7 @@
     int 21h
     mov ah, 3eh
     int 21h
+    
+    int 3h
 .exit
 end
