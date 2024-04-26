@@ -1,144 +1,118 @@
-; This Assembly Language Program (ALP) checks the entered username and password, and displays a custom message accordingly.
-
 .model tiny
+.386
 .data
-
-; Data section contains the messages, the correct username, and password for comparison.
-
-msg1 db "enter 10 character long User Name: $" ; Message 1: Prompt to enter the username
-usn1 db "anub@g.com$" ; Correct username for comparison
-max1 db 20 ; Maximum length for input
-act1 db ? ; Placeholder for action
-inp1 db 20 dup("$") ; Buffer to store user's input for username
-
-msg2 db "enter 5 character long password:$" ; Message 2: Prompt to enter the password
-pass1 db "oscar" ; Correct password for comparison
-inp2 db 30 dup("$") ; Buffer to store user's input for password
-msg3 db "hello $" ; Message 3: Greeting message when both inputs are correct
-msg4 db "wrong username$" ; Message 4: Wrong username input
-msg5 db "wrong password$" ; Message 5: Wrong password input
-nline db 0ah, 0dh, "$" ; New line characters
+inp1 db 32 DUP(0)
+rowstr dw ?
+rowend dw ?
+colmstr dw ?
+colmend dw ?
+cnt db ?
 
 .code
 .startup
 
-    ; Display message 1 on the screen and go to the next line.
+    ; Set display mode to 640x480 16 colors
+    MOV AH, 00H
+    MOV AL, 12H
+    INT 10H
 
-    lea dx, msg1
-    mov ah, 09h
-    int 21h
+    ; Set cursor position to (20, 20)
+    MOV AH, 02H
+    MOV DH, 20
+    MOV DL, 20
+    MOV BH, 00
+    INT 10H
 
-    ; Add a new line after the message.
+    ; Initialize parameters for box drawing
+    MOV rowstr, 10
+    MOV rowend, 410
+    MOV colmstr, 10
+    MOV colmend, 210
+    MOV cnt, 00
 
-    lea dx, nline
-    mov ah, 09h
-    int 21h
+    ; Paint the first box
+    PAINT1:
+    MOV SI, rowstr ; Row start
+    COLM1:
+    MOV CX, colmend ; Column end
+    ROW1:
+    DEC CX
+    MOV DI, CX
+    PUSH CX
+    MOV AH, 0Ch
+    MOV AL, 1111b ; Color for first box
+    MOV CX, DI
+    MOV DX, SI
+    INT 10h
+    POP CX
+    CMP CX, colmstr ; Column start
+    JNZ ROW1
+    INC SI
+    MOV AX, rowend ; Row end
+    CMP SI, AX
+    JNZ COLM1
 
-    ; Take input from the user and store it in inp1.
+    ; Change vertices for the next box
+    LEA SI, rowstr
+    ADD WORD PTR[SI], 10
+    LEA SI, rowend
+    SUB WORD PTR[SI], 10
+    LEA SI, colmstr
+    ADD WORD PTR[SI], 10
+    LEA SI, colmend
+    SUB WORD PTR[SI], 10
+    LEA SI, cnt
+    INC BYTE PTR[SI]
 
-    lea dx, max1
-    mov ah, 0ah
-    int 21h
+    MOV AL, 07h
+    MOV BL, cnt
+    CMP BL, AL
+    JGE TERM ; Terminate if cnt >= 7
 
-     ; Compare the entered username with the stored username.
+    ; Paint the second box
+    MOV SI, rowstr ; Row start
+    COLM2:
+    MOV CX, colmend ; Column end
+    ROW2:
+    DEC CX
+    MOV DI, CX
+    PUSH CX
+    MOV AH, 0Ch
+    MOV AL, 1100b ; Color for second box
+    MOV CX, DI
+    MOV DX, SI
+    INT 10h
+    POP CX
+    CMP CX, colmstr ; Column start
+    JNZ ROW2
+    INC SI
+    MOV AX, rowend ; Row end
+    CMP SI, AX
+    JNZ COLM2
 
-    cld
-    lea di, inp1
-    lea si, usn1
-    mov cx, 11
-    repe cmpsb
-    jcxz l1
+    ; Change vertices for the next box
+    LEA SI, rowstr
+    ADD WORD PTR[SI], 10
+    LEA SI, rowend
+    SUB WORD PTR[SI], 10
+    LEA SI, colmstr
+    ADD WORD PTR[SI], 10
+    LEA SI, colmend
+    SUB WORD PTR[SI], 10
+    LEA SI, cnt
+    INC BYTE PTR[SI]
 
-    ; If the username is incorrect, display the "wrong username" message and exit.
+    JMP PAINT1 ; Continue painting boxes
 
-    lea dx, nline
-    mov ah, 09h
-    int 21h
+    END1:
+    MOV AH, 07H
+    INT 21h
+    CMP AL, "%"
+    JNZ END1 ; Loop until '%' is received
 
-    lea dx, msg4
-    mov ah, 09h
-    int 21h
+    TERM:
+    MOV AH, 4CH ; Terminate program
+    INT 21H
 
-    mov ah, 4ch
-    int 21h
-
-    ; If the username is correct, display the "enter password" message.
-
-    l1:
-    lea dx, nline
-    mov ah, 09h
-    int 21h
-
-    lea dx, msg2
-    mov ah, 09h
-    int 21h
-
-    lea dx, nline
-    mov ah, 09h
-    int 21h
-
-    ; Take password input from the user, masking the characters.
-
-    mov cx, 6
-    lea di, inp2
-    l2:
-    mov ah, 08h
-    int 21h
-    mov [di], al
-    mov dl, '*'
-    mov ah, 02h
-    int 21h
-    inc di
-    dec cx
-    jnz l2
-
-    ; Compare the entered password with the stored password.
-
-    cld
-    mov cx, 6
-    lea di, inp2
-    lea si, pass1
-    repe cmpsb
-    jcxz l3
-
-    ; If the password is incorrect, display the "wrong password" message and exit.
-
-    lea dx, nline
-    mov ah, 09h
-    int 21h
-
-    lea dx, msg5
-    mov ah, 09h
-    int 21h
-
-    mov ah, 4ch
-    int 21h
-
-    ; If the password is correct, display the greeting message and the username.
-
-    l3:
-    lea dx, nline
-    mov ah, 09h
-    int 21h
-
-    lea dx, msg3
-    mov ah, 09h
-    int 21h
-
-    lea dx, usn1
-    mov ah,09h
-    int 21h
-
-    lea dx, nline
-    mov ah, 09h
-    int 21h
-
-
-    lea bx, msg2
-    lea bx, msg2
-    lea bx, msg2
-    lea bx, msg2
-
-    int 3h
 .exit
 end
